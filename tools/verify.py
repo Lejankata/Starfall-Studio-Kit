@@ -11,6 +11,7 @@ REQUIRED = [
     "default.project.json",
     "docs/TESTING.md",
     "docs/ARCHITECTURE.md",
+    "docs/V2_UPGRADE.md",
     "docs/SECURITY.md",
     "LICENSE",
     "README.md",

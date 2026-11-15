@@ -6,7 +6,7 @@ The Roblox server is the authority on collectible availability, distance, credit
 
 Implemented safeguards:
 
-- Remote actions restricted to an allowlist: `hello`, `buy`, `quest`, `daily`.
+- Remote actions restricted to an allowlist: `hello`, `buy`, `quest`, `daily`, `petBuy`, `petEquip`, `worldBuy`.
 - Type and length checks for remote arguments.
 - Per-player cooldown for economy actions.
 - Server-owned prices and levels.
@@ -29,3 +29,5 @@ Sources:
 - https://create.roblox.com/docs/scripting/security/security-tactics
 - https://create.roblox.com/docs/cloud-services/data-stores
 - https://create.roblox.com/docs/scripting/events/remote
+
+Version 2 checks pet ownership, deterministic pet prices, equipped-pet yield, region unlock prices, and access before any server-side harvest. Client pet models and leaderboard display are cosmetic only.

@@ -1,74 +1,26 @@
-# Manual testing in Roblox Studio
+# Starfall v2 Studio Test Plan
 
-**The automated CI tests only check repository structure and basic source contracts. The following checks require a real Studio playtest. Do not mark boxes complete without testing.**
+Run these tests together in a **private** published test experience. Use a second account or a 2-player local server for multiplayer.
 
-## Setup
+## 5-minute smoke test
 
-- [ ] Fresh Baseplate, server script under ServerScriptService, client script under StarterPlayerScripts.
-- [ ] Play starts and Output shows `[Starfall] World, shop, quests, daily rewards, and pickups initialized.`
-- [ ] `Workspace.StarfallWorld` appears under Explorer while Play is running.
-- [ ] Three zones and four kiosks render, with floating signs.
-- [ ] No red runtime errors in Output.
+- [ ] Press F5; five zones and six kiosks appear, with no red Output errors.
+- [ ] Gather a starter crystal; energy rises and lifetime Crystals leaderstat rises by one.
+- [ ] Sell energy; initial sale pays 3 credits per energy.
+- [ ] Buy Market Expert; selling rate becomes 4 credits per energy.
+- [ ] Adopt Star Wisp for 150 credits; it appears beside your avatar.
+- [ ] Gather a mint crystal with Star Wisp; energy increases by 5 (3 base +2 pet bonus), subject to bag capacity.
+- [ ] Equip Comet Fox if purchased; its bonus replaces rather than stacking with the Wisp.
+- [ ] Open Worlds; Frostspire Peaks requires 500 credits, Nebula Gardens 1,800.
+- [ ] Attempt to gather in locked Frostspire Peaks; no energy is awarded.
+- [ ] Unlock Frostspire, then gather there; base energy reward is 16, plus pet/power bonuses.
+- [ ] Open Leaders; scores display only players in the current server.
+- [ ] Rejoin the private test game; credits, upgrades, pet ownership/equipment, and world unlocks persist.
+- [ ] On two clients, gather one shared crystal; it vanishes for both and reappears around 9 seconds later.
+- [ ] On two clients, verify separate credits/energy and visible equipped pets.
+- [ ] Resize the Studio emulator to a phone viewport; all seven tabs stay accessible.
+- [ ] Claim daily reward twice; only the first claim succeeds on the same UTC day.
 
-## Gathering and economy
+## Failure reporting
 
-- [ ] Start with 0 credits and 0/30 energy on a new data profile.
-- [ ] Press E on a crystal. Energy increases; the crystal disappears temporarily.
-- [ ] Crystal returns after about nine seconds.
-- [ ] Fill backpack. Attempting to collect at full capacity gives a message and no extra energy.
-- [ ] Walk to the green SELL ENERGY kiosk and use its interaction prompt.
-- [ ] Energy resets to 0 and credits increase by 3 times the sold energy.
-- [ ] Try selling a second time with an empty backpack; no credits awarded.
-
-## Upgrades and quests
-
-- [ ] Open MENU > Shop; see prices and upgrade levels.
-- [ ] Attempt to buy without enough credits; no purchase occurs.
-- [ ] With enough credits, buy Backpack, verify increased energy capacity.
-- [ ] Buy Crystal Power, verify more energy earned per pickup.
-- [ ] Buy Swift Boots, verify increased walking speed, including after a character reset.
-- [ ] Collect 12 crystals, sell 60 energy, and buy 2 upgrades to complete three daily quests.
-- [ ] Claim each completed quest exactly once.
-- [ ] Claim the daily reward once; second attempt must not award more credits.
-
-## Saving
-
-- [ ] Publish a **private test** experience.
-- [ ] In Experience Settings > Security, enable Studio API Services **on the private test experience only**.
-- [ ] Collect credits and buy an upgrade, then Stop and Play again.
-- [ ] Credits, energy, and upgrade levels persist.
-- [ ] Quest reward claim state persists when rejoining during the same UTC day.
-- [ ] Force a DataStore **load** failure in a safe test environment and verify that gameplay continues without overwriting the stored record. Do not attempt destructive tests against a live game.
-
-## Multiplayer and security
-
-- [ ] Use Test > Start Test Session > Server & Clients with two players.
-- [ ] Both players have independent credits, upgrades, and quests.
-- [ ] One player collecting a crystal makes the crystal temporarily unavailable to both players.
-- [ ] Attempt repeated or invalid `buy`/`quest` actions; no free credits or upgrades appear.
-- [ ] Use an invalid string as upgrade ID; nothing is awarded and the server does not crash.
-- [ ] Trigger a prompt from excessive distance in an isolated test; no rewards are awarded.
-
-## Mobile and usability
-
-- [ ] Use Test > Device Simulator to test a phone width.
-- [ ] The MENU button, HUD, and modal remain usable without horizontal overflow.
-- [ ] All four tabs display clearly on mobile.
-- [ ] Claim and purchase buttons are reachable and readable.
-- [ ] A ProximityPrompt is usable with touch input.
-- [ ] Press M on desktop to open/close the menu.
-
-## Record outcomes
-
-Use the following for each failure:
-
-```text
-Date / Studio version:
-Test scenario:
-Expected:
-Observed:
-Output errors:
-Screenshot or recording:
-```
-
-Open an issue on GitHub with reproducible evidence. Never claim to have run a test you haven't performed.
+Record the failing step, Output messages, expected and observed numbers, Roblox Studio version, and a screenshot. Never include account secrets. Static checks do not establish gameplay correctness. The source has not received an independent v2 Studio playtest.

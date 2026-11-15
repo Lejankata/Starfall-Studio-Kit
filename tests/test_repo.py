@@ -22,6 +22,23 @@ class RepositoryChecks(unittest.TestCase):
         self.assertNotIn("MarketplaceService:PromptProductPurchase", server)
         self.assertNotIn("HttpService:RequestAsync", server)
 
+    def test_expansion_source_contracts(self):
+        server = (ROOT / "src/server/StarfallServer.server.luau").read_text()
+        client = (ROOT / "src/client/StarfallClient.client.luau").read_text()
+        for key in ("StarfallStudioKit_v1", 'id = "frost"', 'id = "nebula"',
+                    'wisp = {', 'fox = {', 'dragon = {', 'market = {',
+                    'action == "petBuy"', 'action == "petEquip"', 'action == "worldBuy"',
+                    'data.pets.owned', 'data.unlocked', 'petBonus(data)', 'sellPrice(data)'):
+            self.assertIn(key, server)
+        for key in ('activeTab == "Pets"', 'activeTab == "Worlds"',
+                    'activeTab == "Leaders"', 'GetAttribute("StarfallPet")',
+                    '"petBuy"', '"petEquip"', '"worldBuy"'):
+            self.assertIn(key, client)
+
+    def test_v2_docs(self):
+        self.assertTrue((ROOT / "docs/V2_UPGRADE.md").is_file())
+        self.assertIn("Studio Test Plan", (ROOT / "docs/TESTING.md").read_text())
+
     def test_readme_links_to_actual_sources(self):
         readme = (ROOT / "README.md").read_text()
         for path in ("src/server/StarfallServer.server.luau", "src/client/StarfallClient.client.luau", "docs/TESTING.md"):

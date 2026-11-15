@@ -1,14 +1,21 @@
 # Changelog
 
-## 0.1.0 - 2026-11-15
+## 2.0.0 - Starfall Expansion (2026-11-16)
 
-Initial project source:
+- Added Frostspire Peaks (500 credits) and Nebula Gardens (1,800 credits) as unlockable gathering regions.
+- Added 24 crystals for a total of 60 across five zones.
+- Added three persistent, non-random pet adoptions: Star Wisp, Comet Fox, Nebula Dragon.
+- Pets follow characters visually for all clients and add server-validated energy when equipped.
+- Added Market Expert upgrade to increase the selling price per energy.
+- Added live, per-server leaderboard and persistent lifetime crystal totals in leaderstats.
+- Added pathways, lanterns, glowing trees, and atmosphere effects.
+- Upgraded menu to seven tabs with mobile layout.
+- Preserved `StarfallStudioKit_v1` DataStore name for v1 progress compatibility.
+- Added migration documentation and static source-contract checks.
 
-- Three automatically generated crystal zones and four kiosk interactions.
-- Server-owned energy/credit economy with backpack, harvest, and speed upgrades.
-- Three daily quests and once-daily login reward.
-- DataStore-backed player progress with failed-load protection.
-- Desktop/mobile HUD, shop, quest tab, guide, and notifications.
-- Beginner setup documentation and static repository verification.
+The v2 source passes Python structural checks but requires Roblox Studio playtesting.
 
-**Status:** Repository static checks included; Roblox Studio playtest results still needed.
+## 1.0.0 - Initial kit
+
+- Gather crystals in three zones, sell energy, and purchase three upgrades.
+- Daily quests and check-in rewards, DataStore saving, multiplayer interactions.

@@ -24,3 +24,10 @@ This roadmap describes **ideas**, not completed features.
 - Gambling mechanics or paid randomized rewards.
 - Copying existing Roblox game brands, assets, maps, or characters.
 - Fabricated popularity claims or fake player statistics.
+
+## After v2
+
+- Independently playtest new pet/world saving and server-authoritative purchases.
+- Add accessibility improvements for keyboard/controller users.
+- Add server-side performance profiling and object pooling as the map grows.
+- Consider session locking before public release or higher-value economy features.

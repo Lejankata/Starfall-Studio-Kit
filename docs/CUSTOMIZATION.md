@@ -48,3 +48,11 @@ A new upgrade must be added to the authoritative server tables and save schema, 
 ## Avoid a common mistake
 
 The server script **must not** live inside Workspace. The client script **must not** live inside ServerScriptService. Follow the README setup paths exactly.
+
+## Version 2 configuration
+
+- Edit `PETS` for pet prices and energy bonuses; keep pet IDs stable once saves exist.
+- Edit `ZONES` for unlock prices, base yields, and world locations; retain stable zone IDs for the persistent `unlocked` keys.
+- Edit `UPGRADES.market` to change the credit-per-energy selling price progression.
+- Pet visuals and menu tabs are in `StarfallClient.client.luau`; pet reward logic is **not** client-controlled.
+- Changing the DataStore name creates a fresh profile store and will make existing progress appear lost.

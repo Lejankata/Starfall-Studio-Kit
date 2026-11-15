@@ -55,10 +55,21 @@ The map is generated on server start under `Workspace.StarfallWorld`:
 - UPGRADE SHOP kiosk
 - DAILY REWARD kiosk
 - QUEST BOARD kiosk
-- Three crystal zones, each with 12 crystals
+- PET SANCTUARY kiosk
+- WORLD PORTAL kiosk
+- Five crystal zones, each with 12 crystals
 
 No external assets required. Zone crystal spawns are fixed and server-shared.
 
 ### Performance
 
 The world contains 36 interactable crystals. Each has an independent server callback and a nine-second respawn. Scaling to thousands of collectibles would require pooling and more centralized scheduling.
+
+## Version 2 additions
+
+- All pet purchases, pet equipment, region unlocks, and bonus yields are calculated and authorized by the server. The player attribute `StarfallPet` only exposes the equipped pet ID for visual replication.
+- New persistent fields: `pets.owned`, `pets.equipped`, `unlocked.frost`, `unlocked.nebula`, and `upgrades.market`. Missing fields in old v1 saves are defaulted without changing the DataStore name.
+- The seven-tab client renders server-provided shop/pet/world snapshots; it never sends currency amounts.
+- Pet models are client-side cosmetic parts, with a separate model displayed for every player with an equipped-pet attribute.
+- The in-menu leaderboard reads Roblox `leaderstats` for the current server only. No OrderedDataStore global rankings are claimed.
+- New regions are not hard collision-locked; the server rejects harvesting for players who have not paid the unlock cost.

@@ -31,14 +31,23 @@ local ZONES = {
     { id = "meadow", title = "Starlight Meadow", center = Vector3.new(0, 1, 88), color = COLORS.mint, yield = 3 },
     { id = "canyon", title = "Amber Canyon", center = Vector3.new(-91, 1, 95), color = COLORS.amber, yield = 6 },
     { id = "glade", title = "Moonlit Glade", center = Vector3.new(91, 1, 95), color = COLORS.violet, yield = 10 },
+    { id = "frost", title = "Frostspire Peaks", center = Vector3.new(-91, 1, 194), color = COLORS.sky, yield = 16, price = 500 },
+    { id = "nebula", title = "Nebula Gardens", center = Vector3.new(91, 1, 194), color = Color3.fromRGB(255, 113, 190), yield = 25, price = 1800 },
 }
 
 local UPGRADES = {
     pack = { title = "Bigger Backpack", base = 85, growth = 1.55, max = 8 },
     power = { title = "Crystal Power", base = 115, growth = 1.6, max = 7 },
     boots = { title = "Swift Boots", base = 70, growth = 1.65, max = 5 },
+    market = { title = "Market Expert", base = 250, growth = 1.8, max = 5 },
 }
-local UPGRADE_ORDER = { "pack", "power", "boots" }
+local UPGRADE_ORDER = { "pack", "power", "boots", "market" }
+local PETS = {
+    wisp = { title = "Star Wisp", cost = 150, bonus = 2, color = COLORS.mint },
+    fox = { title = "Comet Fox", cost = 450, bonus = 5, color = COLORS.amber },
+    dragon = { title = "Nebula Dragon", cost = 1500, bonus = 10, color = COLORS.violet },
+}
+local PET_ORDER = { "wisp", "fox", "dragon" }
 local QUESTS = {
     collector = { title = "Star Collector", target = 12, reward = 60, detail = "Collect 12 crystals" },
     merchant = { title = "Market Day", target = 60, reward = 100, detail = "Sell 60 energy" },
@@ -71,7 +80,9 @@ local function freshData(): {[string]: any}
         energy = 0,
         collected = 0,
         sold = 0,
-        upgrades = { pack = 0, power = 0, boots = 0 },
+        upgrades = { pack = 0, power = 0, boots = 0, market = 0 },
+        pets = { owned = {}, equipped = "" },
+        unlocked = { frost = false, nebula = false },
         daily = { day = "", claimed = false },
         quests = { day = dayKey(), progress = { collector = 0, merchant = 0, builder = 0 }, claimed = {} },
     }
@@ -87,6 +98,17 @@ local function sanitize(input: any): {[string]: any}
     for key, def in pairs(UPGRADES) do
         result.upgrades[key] = whole(upgrades[key], 0, def.max)
     end
+    local pets = if typeof(input.pets) == "table" then input.pets else {}
+    local owned = if typeof(pets.owned) == "table" then pets.owned else {}
+    for id in pairs(PETS) do
+        result.pets.owned[id] = owned[id] == true
+    end
+    if typeof(pets.equipped) == "string" and PETS[pets.equipped] and result.pets.owned[pets.equipped] then
+        result.pets.equipped = pets.equipped
+    end
+    local unlocked = if typeof(input.unlocked) == "table" then input.unlocked else {}
+    result.unlocked.frost = unlocked.frost == true
+    result.unlocked.nebula = unlocked.nebula == true
     result.energy = math.min(whole(input.energy, 0, 1000000), 30 + result.upgrades.pack * 20)
     if typeof(input.daily) == "table" and typeof(input.daily.day) == "string" then
         result.daily.day = input.daily.day
@@ -115,6 +137,8 @@ local function copyForSave(data: {[string]: any}): {[string]: any}
         collected = data.collected,
         sold = data.sold,
         upgrades = table.clone(data.upgrades),
+        pets = { owned = table.clone(data.pets.owned), equipped = data.pets.equipped },
+        unlocked = table.clone(data.unlocked),
         daily = table.clone(data.daily),
         quests = {
             day = data.quests.day,
@@ -151,6 +175,19 @@ end
 local function upgradeCost(id: string, level: number): number
     local def = UPGRADES[id]
     return math.floor(def.base * (def.growth ^ level) + 0.5)
+end
+
+local function petBonus(data: {[string]: any}): number
+    local id = data.pets.equipped
+    return if PETS[id] then PETS[id].bonus else 0
+end
+
+local function sellPrice(data: {[string]: any}): number
+    return 3 + data.upgrades.market
+end
+
+local function worldLevel(data: {[string]: any}): number
+    return 3 + (if data.unlocked.frost then 1 else 0) + (if data.unlocked.nebula then 1 else 0)
 end
 
 local function resetQuestsIfNeeded(session: Session)
@@ -191,12 +228,33 @@ local function sync(player: Player)
             reward = def.reward, claimed = data.quests.claimed[id] == true,
         })
     end
+    local petShop = {}
+    for _, id in ipairs(PET_ORDER) do
+        local pet = PETS[id]
+        table.insert(petShop, {
+            id = id, title = pet.title, bonus = pet.bonus, cost = pet.cost,
+            owned = data.pets.owned[id] == true, equipped = data.pets.equipped == id,
+        })
+    end
+    local worlds = {}
+    for _, zone in ipairs(ZONES) do
+        table.insert(worlds, {
+            id = zone.id, title = zone.title, yield = zone.yield, price = zone.price,
+            unlocked = zone.price == nil or data.unlocked[zone.id] == true,
+        })
+    end
     remote:FireClient(player, "Snapshot", {
         coins = data.coins,
         energy = data.energy,
         capacity = energyCap(data),
         collected = data.collected,
         sold = data.sold,
+        sellPrice = sellPrice(data),
+        equippedPet = data.pets.equipped,
+        petBonus = petBonus(data),
+        pets = petShop,
+        worlds = worlds,
+        currentWorlds = worldLevel(data),
         shop = shop,
         quests = quests,
         dailyClaimed = data.daily.day == dayKey() and data.daily.claimed,
@@ -213,6 +271,10 @@ local function updateCoinsStat(player: Player, data: {[string]: any})
     local stats = player:FindFirstChild("leaderstats")
     local value = if stats then stats:FindFirstChild("Credits") else nil
     if value and value:IsA("IntValue") then value.Value = data.coins end
+    local crystals = if stats then stats:FindFirstChild("Crystals") else nil
+    if crystals and crystals:IsA("IntValue") then crystals.Value = data.collected end
+    local worlds = if stats then stats:FindFirstChild("Worlds") else nil
+    if worlds and worlds:IsA("IntValue") then worlds.Value = worldLevel(data) end
 end
 
 local function applySpeed(player: Player, data: {[string]: any})
@@ -246,9 +308,21 @@ local function save(player: Player): boolean
         or session.data.upgrades.pack ~= snapshot.upgrades.pack
         or session.data.upgrades.power ~= snapshot.upgrades.power
         or session.data.upgrades.boots ~= snapshot.upgrades.boots
+        or session.data.upgrades.market ~= snapshot.upgrades.market
+        or session.data.pets.equipped ~= snapshot.pets.equipped
+        or session.data.unlocked.frost ~= snapshot.unlocked.frost
+        or session.data.unlocked.nebula ~= snapshot.unlocked.nebula
         or session.data.daily.day ~= snapshot.daily.day
         or session.data.daily.claimed ~= snapshot.daily.claimed
         or session.data.quests.day ~= snapshot.quests.day
+    if not session.dirty then
+        for id in pairs(PETS) do
+            if session.data.pets.owned[id] ~= snapshot.pets.owned[id] then
+                session.dirty = true
+                break
+            end
+        end
+    end
     if not session.dirty then
         for id in pairs(QUESTS) do
             if session.data.quests.progress[id] ~= snapshot.quests.progress[id]
@@ -268,6 +342,12 @@ local function loadPlayer(player: Player)
     local credits = Instance.new("IntValue")
     credits.Name = "Credits"
     credits.Parent = stats
+    local crystals = Instance.new("IntValue")
+    crystals.Name = "Crystals"
+    crystals.Parent = stats
+    local worlds = Instance.new("IntValue")
+    worlds.Name = "Worlds"
+    worlds.Parent = stats
 
     local session: Session = {
         data = freshData(), ready = false, persist = false, dirty = false,
@@ -288,6 +368,7 @@ local function loadPlayer(player: Player)
     if sessions[player] ~= session or not player.Parent then return end
     session.ready = true
     updateCoinsStat(player, session.data)
+    player:SetAttribute("StarfallPet", session.data.pets.equipped)
     if player.Character then applySpeed(player, session.data) end
     player.CharacterAdded:Connect(function(character)
         local humanoid = character:WaitForChild("Humanoid", 10)
@@ -320,12 +401,13 @@ local function sellEnergy(player: Player)
         return
     end
     session.data.energy = 0
-    session.data.coins += amount * 3
+    local earned = amount * sellPrice(session.data)
+    session.data.coins += earned
     session.data.sold += amount
     questProgress(session, "merchant", amount)
     session.dirty = true
     updateCoinsStat(player, session.data)
-    toast(player, "Sold " .. amount .. " energy for " .. (amount * 3) .. " credits!")
+    toast(player, "Sold " .. amount .. " energy for " .. earned .. " credits!")
     sync(player)
 end
 
@@ -350,6 +432,73 @@ local function buyUpgrade(player: Player, id: string)
     updateCoinsStat(player, session.data)
     if id == "boots" then applySpeed(player, session.data) end
     toast(player, "Upgraded " .. def.title .. " to Lv. " .. (level + 1) .. "!")
+    sync(player)
+end
+
+local function buyPet(player: Player, id: string)
+    local session = sessions[player]
+    local pet = PETS[id]
+    if not session or not session.ready or not pet then return end
+    local data = session.data
+    if data.pets.owned[id] then
+        toast(player, "Pet already adopted. Select Equip instead!")
+        return
+    end
+    if data.coins < pet.cost then
+        toast(player, "Not enough credits for " .. pet.title)
+        return
+    end
+    data.coins -= pet.cost
+    data.pets.owned[id] = true
+    if data.pets.equipped == "" then
+        data.pets.equipped = id
+        player:SetAttribute("StarfallPet", id)
+    end
+    session.dirty = true
+    updateCoinsStat(player, data)
+    toast(player, "Adopted " .. pet.title .. "! Open Pets to equip.")
+    sync(player)
+end
+
+local function equipPet(player: Player, id: string)
+    local session = sessions[player]
+    if not session or not session.ready then return end
+    local data = session.data
+    if id ~= "none" and (not PETS[id] or not data.pets.owned[id]) then return end
+    local chosen = if id == "none" then "" else id
+    if data.pets.equipped == chosen then return end
+    data.pets.equipped = chosen
+    player:SetAttribute("StarfallPet", chosen)
+    session.dirty = true
+    toast(player, if chosen == "" then "Pet unequipped" else PETS[chosen].title .. " equipped!")
+    sync(player)
+end
+
+local function unlockZone(player: Player, id: string)
+    local session = sessions[player]
+    if not session or not session.ready then return end
+    local zone: any = nil
+    for _, candidate in ipairs(ZONES) do
+        if candidate.id == id then
+            zone = candidate
+            break
+        end
+    end
+    if not zone or zone.price == nil then return end
+    local data = session.data
+    if data.unlocked[id] then
+        toast(player, zone.title .. " is already unlocked!")
+        return
+    end
+    if data.coins < zone.price then
+        toast(player, "You need " .. zone.price .. " credits to unlock " .. zone.title)
+        return
+    end
+    data.coins -= zone.price
+    data.unlocked[id] = true
+    session.dirty = true
+    updateCoinsStat(player, data)
+    toast(player, "New world unlocked: " .. zone.title .. "!")
     sync(player)
 end
 
@@ -393,6 +542,12 @@ remote.OnServerEvent:Connect(function(player: Player, action: any, value: any)
         buyUpgrade(player, value)
     elseif action == "quest" and typeof(value) == "string" and #value < 24 then
         claimQuest(player, value)
+    elseif action == "petBuy" and typeof(value) == "string" and #value < 24 then
+        buyPet(player, value)
+    elseif action == "petEquip" and typeof(value) == "string" and #value < 24 then
+        equipPet(player, value)
+    elseif action == "worldBuy" and typeof(value) == "string" and #value < 24 then
+        unlockZone(player, value)
     end
 end)
 
@@ -478,10 +633,43 @@ local floor = makePart("Town Square", Vector3.new(70, 1, 70), Vector3.new(0, -0.
 floor.Transparency = 0.08
 makePart("Welcome Beacon", Vector3.new(4, 16, 4), Vector3.new(0, 7, -30), COLORS.violet, Enum.Material.Neon, world)
 
-kiosk("SELL ENERGY", Vector3.new(0, 1, 25), COLORS.mint, "Sell backpack", "3 credits per energy", sellEnergy)
-kiosk("UPGRADE SHOP", Vector3.new(-24, 1, 9), COLORS.sky, "Browse shop", "Pack / Power / Boots", function(p) openPanel(p, "Shop") end)
+-- Walkways, lamps, and landmarks give the generated map a consistent style.
+local function walkway(from: Vector3, to: Vector3, color: Color3)
+    local diff = to - from
+    local mid = (from + to) / 2
+    local path = makePart("Lit Walkway", Vector3.new(11, 0.4, diff.Magnitude), Vector3.new(mid.X, -0.19, mid.Z), COLORS.dark, Enum.Material.Slate, world)
+    path.CFrame = CFrame.lookAt(path.Position, Vector3.new(to.X, -0.19, to.Z))
+    for side = -1, 1, 2 do
+        local strip = makePart("Walkway Edge", Vector3.new(0.35, 0.45, diff.Magnitude), path.Position, color, Enum.Material.Neon, world)
+        strip.CFrame = path.CFrame * CFrame.new(side * 5, 0.12, 0)
+        strip.CanCollide = false
+    end
+end
+walkway(Vector3.new(0, 0, 31), Vector3.new(0, 0, 66), COLORS.mint)
+walkway(Vector3.new(-25, 0, 25), Vector3.new(-91, 0, 73), COLORS.amber)
+walkway(Vector3.new(25, 0, 25), Vector3.new(91, 0, 73), COLORS.violet)
+walkway(Vector3.new(-91, 0, 117), Vector3.new(-91, 0, 170), COLORS.sky)
+walkway(Vector3.new(91, 0, 117), Vector3.new(91, 0, 170), COLORS.violet)
+
+for i = 1, 14 do
+    local angle = i * 2 * math.pi / 14
+    local p = Vector3.new(math.cos(angle) * 31, 0, math.sin(angle) * 31)
+    makePart("Town Lantern", Vector3.new(1.2, 8, 1.2), p + Vector3.new(0, 3.5, 0), COLORS.dark, Enum.Material.Metal, world)
+    local bulb = makePart("Lantern Light", Vector3.new(2.5, 2.5, 2.5), p + Vector3.new(0, 8, 0), COLORS.mint, Enum.Material.Neon, world, Enum.PartType.Ball)
+    bulb.CanCollide = false
+    local glow = Instance.new("PointLight")
+    glow.Brightness = 1
+    glow.Range = 19
+    glow.Color = COLORS.mint
+    glow.Parent = bulb
+end
+
+kiosk("SELL ENERGY", Vector3.new(0, 1, 25), COLORS.mint, "Sell backpack", "3+ credits per energy", sellEnergy)
+kiosk("UPGRADE SHOP", Vector3.new(-24, 1, 9), COLORS.sky, "Browse shop", "Four upgrade tracks", function(p) openPanel(p, "Shop") end)
 kiosk("DAILY REWARD", Vector3.new(24, 1, 9), COLORS.amber, "Claim reward", "+75 credits every UTC day", claimDaily)
 kiosk("QUEST BOARD", Vector3.new(0, 1, -25), COLORS.violet, "View quests", "3 daily challenges", function(p) openPanel(p, "Quests") end)
+kiosk("PET SANCTUARY", Vector3.new(-25, 1, -14), COLORS.amber, "Adopt a pet", "Three collectible companions", function(p) openPanel(p, "Pets") end)
+kiosk("WORLD PORTAL", Vector3.new(25, 1, -14), COLORS.sky, "See worlds", "Unlock two new regions", function(p) openPanel(p, "Worlds") end)
 
 for _, zone in ipairs(ZONES) do
     local folder = Instance.new("Folder")
@@ -490,7 +678,32 @@ for _, zone in ipairs(ZONES) do
     local platform = makePart(zone.title .. " Floor", Vector3.new(52, 1, 52), zone.center + Vector3.new(0, -1.55, 0), COLORS.dark, Enum.Material.Slate, folder)
     platform.Color = zone.color:Lerp(COLORS.dark, 0.8)
     local arch = makePart("Zone Sign", Vector3.new(4, 9, 4), zone.center + Vector3.new(0, 3, -21), zone.color, Enum.Material.SmoothPlastic, folder)
-    label(arch, zone.title, "Base yield: " .. zone.yield .. " energy")
+    label(arch, zone.title, "Base yield: " .. zone.yield .. " energy" .. (if zone.price then " | Unlock " .. zone.price else ""))
+    if zone.price then
+        local gateway = makePart("World Access", Vector3.new(7, 5, 4), zone.center + Vector3.new(0, 1.8, -28), zone.color, Enum.Material.Neon, folder)
+        label(gateway, "ACCESS " .. zone.title, "Unlock: " .. zone.price .. " credits")
+        local access = Instance.new("ProximityPrompt")
+        access.ActionText = "Unlock world"
+        access.ObjectText = zone.title
+        access.MaxActivationDistance = 11
+        access.RequiresLineOfSight = false
+        access.Parent = gateway
+        access.Triggered:Connect(function(player)
+            local character = player.Character
+            local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+            if not root or not root:IsA("BasePart") or (root.Position - gateway.Position).Magnitude > 13 then return end
+            unlockZone(player, zone.id)
+        end)
+    end
+    for treeIndex = 1, 6 do
+        local angle = (treeIndex - 1) * math.pi / 3
+        local spot = zone.center + Vector3.new(math.cos(angle) * 32, 0, math.sin(angle) * 32)
+        makePart("Tree Trunk", Vector3.new(2.2, 10, 2.2), spot + Vector3.new(0, 4.2, 0), COLORS.dark, Enum.Material.Wood, folder)
+        local crown = makePart("Glowing Canopy", Vector3.new(9, 9, 9), spot + Vector3.new(0, 10, 0), zone.color, Enum.Material.SmoothPlastic, folder, Enum.PartType.Ball)
+        crown.Transparency = 0.18
+        local accent = makePart("Canopy Star", Vector3.new(3, 3, 3), spot + Vector3.new(0, 13, 0), zone.color, Enum.Material.Neon, folder, Enum.PartType.Ball)
+        accent.CanCollide = false
+    end
 
     for index = 1, CONFIG.CrystalsPerZone do
         local angle = 2 * math.pi * ((index - 1) / CONFIG.CrystalsPerZone)
@@ -520,6 +733,10 @@ for _, zone in ipairs(ZONES) do
             local root = if char then char:FindFirstChild("HumanoidRootPart") else nil
             if not root or not root:IsA("BasePart") or (root.Position - crystal.Position).Magnitude > CONFIG.GatherRadius then return end
             local data = session.data
+            if zone.price and not data.unlocked[zone.id] then
+                toast(player, "Unlock " .. zone.title .. " in the Worlds menu first!")
+                return
+            end
             local free = energyCap(data) - data.energy
             if free <= 0 then
                 toast(player, "Backpack full! Sell energy in Town Square.")
@@ -530,9 +747,10 @@ for _, zone in ipairs(ZONES) do
             prompt.Enabled = false
             crystal.Transparency = 1
             light.Enabled = false
-            local earned = math.min(free, zone.yield + data.upgrades.power)
+            local earned = math.min(free, zone.yield + data.upgrades.power + petBonus(data))
             data.energy += earned
             data.collected += 1
+            updateCoinsStat(player, data)
             questProgress(session, "collector", 1)
             session.dirty = true
             sync(player)
@@ -550,6 +768,19 @@ end
 Lighting.ClockTime = 17.5
 Lighting.Brightness = 2
 Lighting.Ambient = Color3.fromRGB(95, 100, 140)
+Lighting.OutdoorAmbient = Color3.fromRGB(80, 95, 138)
+local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+atmosphere.Density = 0.22
+atmosphere.Haze = 0.7
+atmosphere.Color = Color3.fromRGB(190, 205, 255)
+atmosphere.Decay = Color3.fromRGB(90, 85, 140)
+atmosphere.Parent = Lighting
+local bloom = Lighting:FindFirstChild("StarfallBloom") or Instance.new("BloomEffect")
+bloom.Name = "StarfallBloom"
+bloom.Intensity = 0.34
+bloom.Size = 22
+bloom.Threshold = 1.3
+bloom.Parent = Lighting
 
 Players.PlayerAdded:Connect(loadPlayer)
 for _, player in ipairs(Players:GetPlayers()) do
@@ -588,4 +819,4 @@ game:BindToClose(function()
     while pending > 0 and os.clock() - start < 25 do task.wait(0.1) end
 end)
 
-print("[Starfall] World, shop, quests, daily rewards, and pickups initialized.")
+print("[Starfall] v2 worlds, pets, upgrades, leaderstats, quests, and pickups initialized.")
