@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible issue with Roblox Studio
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and expected outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: '1. Start a new Baseplate\n2. Add scripts\n3. Press Play'
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Studio version / operating system
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output errors and screenshots
+      description: Remove private user information from any logs.

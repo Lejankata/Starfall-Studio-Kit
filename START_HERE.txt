@@ -1,0 +1,28 @@
+STARFALL STUDIO KIT - START HERE
+
+This is a larger Roblox Studio learning project, ready to upload to GitHub.
+
+GITHUB UPLOAD
+1. Extract Starfall-Studio-Kit.zip on your computer.
+2. Create a NEW public GitHub repository named Starfall-Studio-Kit.
+3. Click Add file > Upload files.
+4. Upload the CONTENTS of the extracted Starfall-Studio-Kit folder.
+   Do not upload only the ZIP. Include hidden .github files if your file browser displays them.
+5. Commit changes. GitHub will show README.md on the homepage.
+
+ROBLOX STUDIO INSTALL
+1. Open a fresh Baseplate.
+2. In ServerScriptService insert a Script named StarfallServer.
+3. Paste the complete src/server/StarfallServer.server.luau file into it.
+4. In StarterPlayer > StarterPlayerScripts insert a LocalScript named StarfallClient.
+5. Paste the complete src/client/StarfallClient.client.luau file into it.
+6. Press Play. Gather crystals, sell energy, buy upgrades, claim daily rewards.
+7. Use docs/TESTING.md before publishing any public game.
+
+DATA SAVING
+Publish a PRIVATE test experience and enable Studio API Services for that test place.
+Never test against live player data. This starter has no cross-server session locking.
+
+HONEST STATUS
+Static repository checks pass. Roblox Studio runtime has NOT been tested for this release.
+A GitHub upload does NOT automatically qualify for six free months of Claude.

@@ -1,0 +1,20 @@
+{
+  "name": "StarfallStudioKit",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "$ignoreUnknownInstances": true,
+      "StarfallServer": {
+        "$path": "src/server/StarfallServer.server.luau"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$ignoreUnknownInstances": true,
+        "StarfallClient": {
+          "$path": "src/client/StarfallClient.client.luau"
+        }
+      }
+    }
+  }
+}
